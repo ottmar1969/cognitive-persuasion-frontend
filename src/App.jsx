@@ -11,7 +11,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert.jsx'
 import BusinessList from './components/BusinessList.jsx'
 import LiveChat from './components/LiveChat.jsx'
 import AudienceSelector from './components/AudienceSelector.jsx'
-import API_CONFIG from './config.js'
+import { config as API_CONFIG } from './config.js'
 import mockAPI from './mockApi.js'
 import './App.css'
 
@@ -21,7 +21,7 @@ const AuthContext = React.createContext()
 // API Service
 class APIService {
   constructor() {
-    this.baseURL = API_CONFIG.BASE_URL
+    this.baseURL = API_CONFIG.API_BASE_URL
     this.token = localStorage.getItem('auth_token')
     this.mockMode = API_CONFIG.MOCK_MODE || false // Use real API
   }
@@ -62,24 +62,24 @@ class APIService {
 
     try {
       switch (endpoint) {
-        case '/auth/register':
+        case '/api/auth/register':
           return await mockAPI.register(body.email, body.password);
-        case '/auth/login':
+        case '/api/auth/login':
           return await mockAPI.login(body.email, body.password);
-        case '/auth/profile':
+        case '/api/auth/profile':
           return await mockAPI.getProfile();
-        case '/businesses':
+        case '/api/businesses':
           if (method === 'POST') {
             return await mockAPI.createBusinessType(body);
           }
           return await mockAPI.getBusinessTypes();
-        case '/audiences':
+        case '/api/audiences':
           return await mockAPI.getTargetAudiences();
-        case '/audiences/manual':
+        case '/api/audiences/manual':
           return await mockAPI.createManualAudience(body);
-        case '/payments/packages':
+        case '/api/payments/packages':
           return await mockAPI.getCreditPackages();
-        case '/payments/balance':
+        case '/api/payments/balance':
           return await mockAPI.getCreditBalance();
         default:
           throw new Error(`Mock endpoint not implemented: ${endpoint}`);
@@ -129,30 +129,30 @@ class APIService {
 
   // Auth endpoints
   async register(email, password) {
-    return this.request('/auth/register', {
+    return this.request('/api/auth/register', {
       method: 'POST',
       body: { email, password },
     })
   }
 
   async login(email, password) {
-    return this.request('/auth/login', {
+    return this.request('/api/auth/login', {
       method: 'POST',
       body: { email, password },
     })
   }
 
   async getProfile() {
-    return this.request('/auth/profile')
+    return this.request('/api/auth/profile')
   }
 
   // Business endpoints
   async getBusinesses() {
-    return this.request('/businesses')
+    return this.request('/api/businesses')
   }
 
   async createBusiness(businessData) {
-    return this.request('/businesses', {
+    return this.request('/api/businesses', {
       method: 'POST',
       body: businessData,
     })
@@ -160,18 +160,18 @@ class APIService {
 
   // Audience endpoints
   async getAudiences() {
-    return this.request('/audiences')
+    return this.request('/api/audiences')
   }
 
   async createAudience(audienceData) {
-    return this.request('/audiences', {
+    return this.request('/api/audiences', {
       method: 'POST',
       body: audienceData,
     })
   }
 
   async createManualAudience(manualDescription, name) {
-    return this.request('/audiences/manual', {
+    return this.request('/api/audiences/manual', {
       method: 'POST',
       body: { manual_description: manualDescription, name },
     })
@@ -179,37 +179,37 @@ class APIService {
 
   // AI Session endpoints
   async createSession(sessionData) {
-    return this.request('/sessions', {
+    return this.request('/api/sessions', {
       method: 'POST',
       body: sessionData,
     })
   }
 
   async getSessions() {
-    return this.request('/sessions')
+    return this.request('/api/sessions')
   }
 
   async getSession(sessionId) {
-    return this.request(`/sessions/${sessionId}`)
+    return this.request(`/api/sessions/${sessionId}`)
   }
 
   async regenerateResponses(sessionId) {
-    return this.request(`/sessions/${sessionId}/regenerate`, {
+    return this.request(`/api/sessions/${sessionId}/regenerate`, {
       method: 'POST'
     })
   }
 
   // Payment endpoints
   async getCreditPackages() {
-    return this.request('/payments/packages')
+    return this.request('/api/payments/packages')
   }
 
   async getCreditBalance() {
-    return this.request('/payments/balance')
+    return this.request('/api/payments/balance')
   }
 
   async initiatePurchase(packageId) {
-    return this.request('/payments/purchase', {
+    return this.request('/api/payments/purchase', {
       method: 'POST',
       body: { package_id: packageId },
     })
@@ -969,7 +969,10 @@ function CreditManagement() {
 
 // Main Dashboard Component
 function Dashboard() {
-  const { user, logout } = React.useContext(AuthContext)
+  // Mock user for bypassing authentication
+  const user = { email: 'demo@example.com', user_id: 'demo-user' }
+  const logout = () => {} // Empty logout function
+  
   const [activeTab, setActiveTab] = useState('businesses')
   const [selectedBusiness, setSelectedBusiness] = useState(null)
   const [selectedAudience, setSelectedAudience] = useState(null)
@@ -1133,15 +1136,15 @@ function App() {
               <Routes>
                 <Route 
                   path="/" 
-                  element={user ? <Dashboard /> : <LoginForm />} 
+                  element={<Dashboard />} 
                 />
                 <Route 
                   path="/dashboard" 
-                  element={user ? <Dashboard /> : <Navigate to="/" />} 
+                  element={<Dashboard />} 
                 />
                 <Route 
                   path="/login" 
-                  element={user ? <Navigate to="/dashboard" /> : <LoginForm />} 
+                  element={<Navigate to="/dashboard" />} 
                 />
               </Routes>
             )

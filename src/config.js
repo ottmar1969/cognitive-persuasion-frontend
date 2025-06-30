@@ -1,8 +1,9 @@
 // API Configuration
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://kkh7ikcgje7w.manus.space';
+const API_BASE_URL = 'https://y0h0i3cyjgvq.manus.space';
 
 export const config = {
   API_BASE_URL,
+  MOCK_MODE: true, // Enable mock mode to bypass authentication
   endpoints: {
     auth: {
       register: `${API_BASE_URL}/api/auth/register`,
