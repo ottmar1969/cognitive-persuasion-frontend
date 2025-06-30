@@ -1,5 +1,5 @@
 // API Configuration
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://58hpi8clxe7g.manus.space';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://kkh7ikcgje7w.manus.space';
 
 export const config = {
   API_BASE_URL,
