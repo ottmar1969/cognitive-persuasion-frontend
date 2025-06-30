@@ -254,6 +254,151 @@ const CreditPricing = ({ api, onPurchaseComplete }) => {
           </div>
         </CardContent>
       </Card>
+
+      {/* AI API Key Setup Instructions */}
+      <Card className="border-blue-200 bg-blue-50">
+        <CardHeader>
+          <CardTitle className="text-blue-800">AI API Key Setup</CardTitle>
+          <CardDescription className="text-blue-700">
+            Choose how you want to handle AI API access for your account
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Managed Service Option */}
+          <div className="bg-white rounded-lg p-4 border border-blue-200">
+            <div className="flex items-start space-x-3">
+              <div className="flex-shrink-0">
+                <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                  <Check className="h-5 w-5 text-green-600" />
+                </div>
+              </div>
+              <div className="flex-1">
+                <h4 className="font-semibold text-green-800 mb-2">
+                  Recommended: Managed AI Service (Done For You)
+                </h4>
+                <p className="text-sm text-gray-700 mb-3">
+                  We handle all AI API management for you. No setup required, no API key management, 
+                  and simplified billing through our credit system.
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                  <div className="flex items-center space-x-2">
+                    <Check className="h-4 w-4 text-green-500" />
+                    <span>No API key management</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Check className="h-4 w-4 text-green-500" />
+                    <span>Seamless integration</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Check className="h-4 w-4 text-green-500" />
+                    <span>Simplified billing</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Check className="h-4 w-4 text-green-500" />
+                    <span>Focus on your business</span>
+                  </div>
+                </div>
+                <Button className="mt-3 bg-green-600 hover:bg-green-700">
+                  Contact Us for Managed Service
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          {/* Self-Managed Option */}
+          <div className="bg-white rounded-lg p-4 border border-gray-200">
+            <div className="flex items-start space-x-3">
+              <div className="flex-shrink-0">
+                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                  <CreditCard className="h-5 w-5 text-blue-600" />
+                </div>
+              </div>
+              <div className="flex-1">
+                <h4 className="font-semibold text-blue-800 mb-2">
+                  Self-Managed: Bring Your Own API Key
+                </h4>
+                <p className="text-sm text-gray-700 mb-3">
+                  Use your own OpenAI API key. You'll manage billing directly with OpenAI 
+                  and have full control over your API usage.
+                </p>
+                
+                {/* Step-by-step instructions */}
+                <div className="space-y-3">
+                  <h5 className="font-medium text-gray-800">How to Get Your OpenAI API Key:</h5>
+                  <ol className="list-decimal list-inside space-y-2 text-sm text-gray-700 ml-4">
+                    <li>
+                      <strong>Create an Account:</strong> Visit{' '}
+                      <a 
+                        href="https://openai.com" 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-blue-600 hover:underline"
+                      >
+                        https://openai.com
+                      </a>{' '}
+                      and sign up for an account
+                    </li>
+                    <li>
+                      <strong>Access API Section:</strong> Once logged in, navigate to the API section 
+                      or your dashboard. Look for "API Keys" or "Developer Settings"
+                    </li>
+                    <li>
+                      <strong>Generate New Key:</strong> Click "Create new secret key" and copy it immediately 
+                      (you won't be able to view it again)
+                    </li>
+                    <li>
+                      <strong>Set Up Billing:</strong> Ensure your OpenAI account has billing configured 
+                      with sufficient credits or a subscription plan
+                    </li>
+                    <li>
+                      <strong>Add to Your Account:</strong> Paste your API key in your account settings 
+                      to start using AI features
+                    </li>
+                  </ol>
+                  
+                  <Alert className="mt-4">
+                    <AlertDescription className="text-sm">
+                      <strong>Important:</strong> Keep your API key secure and never share it. 
+                      You'll be responsible for all usage charges on your OpenAI account.
+                    </AlertDescription>
+                  </Alert>
+                  
+                  <Button variant="outline" className="mt-3">
+                    Add My API Key
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Comparison */}
+          <div className="bg-gray-50 rounded-lg p-4">
+            <h4 className="font-semibold text-gray-800 mb-3">Quick Comparison</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+              <div>
+                <h5 className="font-medium text-green-700 mb-2">Managed Service</h5>
+                <ul className="space-y-1 text-gray-600">
+                  <li>✓ No setup required</li>
+                  <li>✓ One billing source</li>
+                  <li>✓ Predictable costs</li>
+                  <li>✓ Full support included</li>
+                  <li>✓ Automatic updates</li>
+                </ul>
+              </div>
+              <div>
+                <h5 className="font-medium text-blue-700 mb-2">Self-Managed</h5>
+                <ul className="space-y-1 text-gray-600">
+                  <li>✓ Direct OpenAI billing</li>
+                  <li>✓ Full API control</li>
+                  <li>✓ Use existing OpenAI credits</li>
+                  <li>⚠ Requires setup</li>
+                  <li>⚠ Separate billing management</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }
