@@ -1,9 +1,9 @@
 // API Configuration
-const API_BASE_URL = 'https://cognitive-persuasion-backend.onrender.com';
+const API_BASE_URL = '';
 
 export const config = {
   API_BASE_URL,
-  MOCK_MODE: true, // Temporarily use mock data while backend loads
+  MOCK_MODE: false, // Use real backend API
   endpoints: {
     auth: {
       register: `${API_BASE_URL}/api/auth/register`,

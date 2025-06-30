@@ -1057,13 +1057,19 @@ function Dashboard() {
     try {
       // Try to login with real API
       const response = await api.login(email, password)
-      setUser(response.user)
-      setIsDemo(false)
-      // Reload data with real user context
-      loadBusinesses()
-      loadAudiences()
+      if (response.access_token) {
+        api.setToken(response.access_token)
+        setUser(response.user)
+        setIsDemo(false)
+        // Reload data with real user context
+        loadBusinesses()
+        loadAudiences()
+      } else {
+        throw new Error('Invalid response from server')
+      }
     } catch (error) {
-      throw new Error('Login failed. Please check your credentials.')
+      console.error('Login error:', error)
+      throw new Error(error.message || 'Login failed. Please check your credentials.')
     }
   }
 
