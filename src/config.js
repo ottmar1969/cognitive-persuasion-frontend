@@ -1,22 +1,33 @@
 // API Configuration
-const API_CONFIG = {
-  // Use environment variable for backend URL, fallback to localhost for development
-  BASE_URL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api',
-  
-  // Disable mock mode to use real API
-  MOCK_MODE: false,
-  
-  // App configuration
-  APP_NAME: import.meta.env.VITE_APP_NAME || 'Cognitive Persuasion Engine',
-  APP_VERSION: import.meta.env.VITE_APP_VERSION || '1.0.0',
-  
-  // Feature flags
-  ENABLE_ANALYTICS: import.meta.env.VITE_ENABLE_ANALYTICS === 'true',
-  ENABLE_DEBUG: import.meta.env.VITE_ENABLE_DEBUG === 'true',
-  
-  // PayPal configuration
-  PAYPAL_CLIENT_ID: import.meta.env.VITE_PAYPAL_CLIENT_ID || ''
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://58hpi8clxe7g.manus.space';
+
+export const config = {
+  API_BASE_URL,
+  endpoints: {
+    auth: {
+      register: `${API_BASE_URL}/api/auth/register`,
+      login: `${API_BASE_URL}/api/auth/login`,
+      logout: `${API_BASE_URL}/api/auth/logout`,
+    },
+    businesses: {
+      list: `${API_BASE_URL}/api/businesses`,
+      create: `${API_BASE_URL}/api/businesses`,
+      update: (id) => `${API_BASE_URL}/api/businesses/${id}`,
+      delete: (id) => `${API_BASE_URL}/api/businesses/${id}`,
+    },
+    audiences: {
+      list: `${API_BASE_URL}/api/audiences`,
+      create: `${API_BASE_URL}/api/audiences`,
+      update: (id) => `${API_BASE_URL}/api/audiences/${id}`,
+      delete: (id) => `${API_BASE_URL}/api/audiences/${id}`,
+    },
+    payments: {
+      create: `${API_BASE_URL}/api/payments/create`,
+      execute: `${API_BASE_URL}/api/payments/execute`,
+    },
+    health: `${API_BASE_URL}/api/health`,
+  }
 };
 
-export default API_CONFIG;
+export default config;
 
