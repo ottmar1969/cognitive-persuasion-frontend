@@ -11,6 +11,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert.jsx'
 import BusinessList from './components/BusinessList.jsx'
 import LiveChat from './components/LiveChat.jsx'
 import AudienceSelector from './components/AudienceSelector.jsx'
+import CreditPricing from './components/CreditPricing.jsx'
 import { config as API_CONFIG } from './config.js'
 import mockAPI from './mockApi.js'
 import './App.css'
@@ -212,6 +213,13 @@ class APIService {
     return this.request('/api/payments/purchase', {
       method: 'POST',
       body: { package_id: packageId },
+    })
+  }
+
+  async completePurchase(transactionId) {
+    return this.request('/api/payments/complete', {
+      method: 'POST',
+      body: { transaction_id: transactionId },
     })
   }
 }
@@ -475,7 +483,7 @@ function DashboardHeader({ user, onLogout, onLogin, isDemo = false }) {
           <div className="flex items-center space-x-4">
             <Badge variant="secondary" className="text-sm">
               <CreditCard className="h-4 w-4 mr-1" />
-              ${creditBalance.toFixed(2)} Credits
+              {creditBalance} Credits
             </Badge>
             {isDemo ? (
               <>
@@ -1003,42 +1011,13 @@ function AISessionManager() {
 
 // Credit Management Component
 function CreditManagement() {
-  const [packages, setPackages] = useState({})
-  const [balance, setBalance] = useState(0)
-  const [loading, setLoading] = useState(false)
+  const [creditBalance, setCreditBalance] = useState(0)
 
-  useEffect(() => {
-    loadCreditData()
-  }, [])
-
-  const loadCreditData = async () => {
-    try {
-      const [packageData, balanceData] = await Promise.all([
-        api.getCreditPackages(),
-        api.getCreditBalance()
-      ])
-      setPackages(packageData.packages)
-      setBalance(balanceData.credit_balance)
-    } catch (error) {
-      console.error('Failed to load credit data:', error)
-    }
-  }
-
-  const handlePurchase = async (packageId) => {
-    setLoading(true)
-    try {
-      const result = await api.initiatePurchase(packageId)
-      if (result.approval_url) {
-        window.open(result.approval_url, '_blank')
-      } else {
-        alert('PayPal integration requires valid API credentials')
-      }
-    } catch (error) {
-      console.error('Purchase failed:', error)
-      alert(error.message)
-    } finally {
-      setLoading(false)
-    }
+  const handlePurchaseComplete = () => {
+    // Refresh credit balance after purchase
+    api.getCreditBalance()
+      .then(data => setCreditBalance(data.credit_balance))
+      .catch(console.error)
   }
 
   return (
@@ -1047,51 +1026,11 @@ function CreditManagement() {
         <h2 className="text-2xl font-bold text-gray-900 mb-2">Credit Management</h2>
         <p className="text-gray-600">Purchase credits for AI sessions</p>
       </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center">
-            <CreditCard className="h-5 w-5 mr-2" />
-            Current Balance
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-3xl font-bold text-green-600">
-            ${balance.toFixed(2)} Credits
-          </div>
-        </CardContent>
-      </Card>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {Object.entries(packages).map(([packageId, packageInfo]) => (
-          <Card key={packageId} className="relative">
-            <CardHeader>
-              <CardTitle>{packageInfo.name}</CardTitle>
-              <CardDescription>{packageInfo.description}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                <div className="text-2xl font-bold">${packageInfo.price.toFixed(2)}</div>
-                <div className="text-sm text-gray-600">
-                  {packageInfo.credits} credits (${packageInfo.price_per_credit.toFixed(2)}/credit)
-                </div>
-                {packageInfo.savings_vs_starter > 0 && (
-                  <Badge variant="secondary" className="text-xs">
-                    Save {packageInfo.savings_vs_starter}%
-                  </Badge>
-                )}
-              </div>
-              <Button 
-                className="w-full mt-4" 
-                onClick={() => handlePurchase(packageId)}
-                disabled={loading}
-              >
-                Purchase
-              </Button>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      
+      <CreditPricing 
+        api={api} 
+        onPurchaseComplete={handlePurchaseComplete}
+      />
     </div>
   )
 }
