@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
-import { Brain, Zap, Target, CreditCard, Settings, LogOut, Menu, X } from 'lucide-react'
+import { Brain, Zap, Target, CreditCard, Settings, LogOut, LogIn, Menu, X } from 'lucide-react'
 import { Button } from '@/components/ui/button.jsx'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.jsx'
 import { Input } from '@/components/ui/input.jsx'
@@ -350,9 +350,100 @@ function LoginForm() {
   )
 }
 
+// Login Modal Component
+function LoginModal({ onClose, onLogin }) {
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [isLogin, setIsLogin] = useState(true)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    setLoading(true)
+    setError('')
+
+    try {
+      await onLogin(email, password)
+    } catch (err) {
+      setError(err.message || 'Authentication failed')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-semibold">
+            {isLogin ? 'Sign In' : 'Create Account'}
+          </h2>
+          <Button variant="ghost" size="sm" onClick={onClose}>
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+        
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <Label htmlFor="email">Email</Label>
+            <Input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="Enter your email"
+              required
+            />
+          </div>
+          <div>
+            <Label htmlFor="password">Password</Label>
+            <Input
+              id="password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Enter your password"
+              required
+            />
+          </div>
+          {error && (
+            <Alert variant="destructive">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+          <Button type="submit" className="w-full" disabled={loading}>
+            {loading ? 'Processing...' : (isLogin ? 'Sign In' : 'Sign Up')}
+          </Button>
+        </form>
+        
+        <div className="mt-4 text-center">
+          <Button
+            variant="link"
+            onClick={() => setIsLogin(!isLogin)}
+            className="text-sm"
+          >
+            {isLogin ? "Don't have an account? Sign up" : 'Already have an account? Sign in'}
+          </Button>
+        </div>
+        
+        <div className="mt-4 pt-4 border-t text-center">
+          <p className="text-sm text-gray-600">
+            Continue in demo mode to explore without signing up
+          </p>
+          <Button variant="outline" onClick={onClose} className="mt-2">
+            Continue Demo
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // Dashboard Header Component
-function DashboardHeader({ user, onLogout }) {
+function DashboardHeader({ user, onLogout, onLogin, isDemo = false }) {
   const [creditBalance, setCreditBalance] = useState(0)
+  const [showLoginModal, setShowLoginModal] = useState(false)
 
   useEffect(() => {
     api.getCreditBalance()
@@ -360,26 +451,64 @@ function DashboardHeader({ user, onLogout }) {
       .catch(console.error)
   }, [])
 
+  const handleLoginClick = () => {
+    setShowLoginModal(true)
+  }
+
+  const handleLoginSubmit = async (email, password) => {
+    try {
+      await onLogin(email, password)
+      setShowLoginModal(false)
+    } catch (error) {
+      throw error // Let the modal handle the error display
+    }
+  }
+
   return (
-    <header className="bg-white border-b border-gray-200 px-6 py-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-3">
-          <Brain className="h-8 w-8 text-indigo-600" />
-          <h1 className="text-xl font-semibold text-gray-900">Cognitive Persuasion Engine</h1>
+    <>
+      <header className="bg-white border-b border-gray-200 px-6 py-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <Brain className="h-8 w-8 text-indigo-600" />
+            <h1 className="text-xl font-semibold text-gray-900">Cognitive Persuasion Engine</h1>
+          </div>
+          <div className="flex items-center space-x-4">
+            <Badge variant="secondary" className="text-sm">
+              <CreditCard className="h-4 w-4 mr-1" />
+              ${creditBalance.toFixed(2)} Credits
+            </Badge>
+            {isDemo ? (
+              <>
+                <Badge variant="outline" className="text-sm text-blue-600">
+                  Demo Mode
+                </Badge>
+                <span className="text-sm text-gray-600">demo@example.com</span>
+                <Button variant="default" size="sm" onClick={handleLoginClick}>
+                  <LogIn className="h-4 w-4 mr-1" />
+                  Login
+                </Button>
+              </>
+            ) : (
+              <>
+                <span className="text-sm text-gray-600">{user.email}</span>
+                <Button variant="outline" size="sm" onClick={onLogout}>
+                  <LogOut className="h-4 w-4 mr-1" />
+                  Logout
+                </Button>
+              </>
+            )}
+          </div>
         </div>
-        <div className="flex items-center space-x-4">
-          <Badge variant="secondary" className="text-sm">
-            <CreditCard className="h-4 w-4 mr-1" />
-            ${creditBalance.toFixed(2)} Credits
-          </Badge>
-          <span className="text-sm text-gray-600">{user.email}</span>
-          <Button variant="outline" size="sm" onClick={onLogout}>
-            <LogOut className="h-4 w-4 mr-1" />
-            Logout
-          </Button>
-        </div>
-      </div>
-    </header>
+      </header>
+
+      {/* Login Modal */}
+      {showLoginModal && (
+        <LoginModal 
+          onClose={() => setShowLoginModal(false)}
+          onLogin={handleLoginSubmit}
+        />
+      )}
+    </>
   )
 }
 
@@ -969,9 +1098,9 @@ function CreditManagement() {
 
 // Main Dashboard Component
 function Dashboard() {
-  // Mock user for bypassing authentication
-  const user = { email: 'demo@example.com', user_id: 'demo-user' }
-  const logout = () => {} // Empty logout function
+  // Demo mode state
+  const [isDemo, setIsDemo] = useState(true)
+  const [user, setUser] = useState({ email: 'demo@example.com', user_id: 'demo-user' })
   
   const [activeTab, setActiveTab] = useState('businesses')
   const [selectedBusiness, setSelectedBusiness] = useState(null)
@@ -979,6 +1108,33 @@ function Dashboard() {
   const [showChat, setShowChat] = useState(false)
   const [businesses, setBusinesses] = useState([])
   const [audiences, setAudiences] = useState([])
+
+  useEffect(() => {
+    loadBusinesses()
+    loadAudiences()
+  }, [])
+
+  const handleLogin = async (email, password) => {
+    try {
+      // Try to login with real API
+      const response = await api.login(email, password)
+      setUser(response.user)
+      setIsDemo(false)
+      // Reload data with real user context
+      loadBusinesses()
+      loadAudiences()
+    } catch (error) {
+      throw new Error('Login failed. Please check your credentials.')
+    }
+  }
+
+  const handleLogout = () => {
+    setIsDemo(true)
+    setUser({ email: 'demo@example.com', user_id: 'demo-user' })
+    // Reload demo data
+    loadBusinesses()
+    loadAudiences()
+  }
 
   useEffect(() => {
     loadBusinesses()
@@ -1039,7 +1195,12 @@ function Dashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <DashboardHeader user={user} onLogout={logout} />
+      <DashboardHeader 
+        user={user} 
+        onLogout={handleLogout} 
+        onLogin={handleLogin}
+        isDemo={isDemo}
+      />
       
       <div className="flex">
         <nav className="w-64 bg-white border-r border-gray-200 min-h-screen p-4">
