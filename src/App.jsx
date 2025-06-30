@@ -552,8 +552,7 @@ function BusinessManagement({ onComplete }) {
       await loadBusinesses()
       if (onComplete) onComplete() // Notify parent component
     } catch (error) {
-      console.error('Failed to create business:', error)
-    } finally {
+      console.error("Failed to create business:", error.message || error)    } finally {
       setLoading(false)
     }
   }
