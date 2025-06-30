@@ -23,7 +23,7 @@ class APIService {
   constructor() {
     this.baseURL = API_CONFIG.BASE_URL
     this.token = localStorage.getItem('auth_token')
-    this.mockMode = API_CONFIG.MOCK_MODE || true // Enable mock mode for demo
+    this.mockMode = API_CONFIG.MOCK_MODE || false // Use real API
   }
 
   async request(endpoint, options = {}) {
