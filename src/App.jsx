@@ -12,6 +12,7 @@ import BusinessList from './components/BusinessList.jsx'
 import LiveChat from './components/LiveChat.jsx'
 import AudienceSelector from './components/AudienceSelector.jsx'
 import CreditPricing from './components/CreditPricing.jsx'
+import RefinedTierSelector from './components/RefinedTierSelector.jsx'
 import { config as API_CONFIG } from './config.js'
 import mockAPI from './mockApi.js'
 import './App.css'
@@ -1036,6 +1037,10 @@ function CreditManagement() {
 
 // Main Dashboard Component
 function Dashboard() {
+const handleConversationStart = (conversationData) => {
+  console.log('Conversation started:', conversationData);
+  alert(`Started ${conversationData.tier_name} for ${conversationData.business_name}`);
+};
   // Demo mode state
   const [isDemo, setIsDemo] = useState(true)
   const [user, setUser] = useState({ email: 'demo@example.com', user_id: 'demo-user' })
@@ -1066,6 +1071,7 @@ function Dashboard() {
       } else {
         throw new Error('Invalid response from server')
       }
+      
     } catch (error) {
       console.error('Login error:', error)
       throw new Error(error.message || 'Login failed. Please check your credentials.')
@@ -1079,7 +1085,10 @@ function Dashboard() {
     loadBusinesses()
     loadAudiences()
   }
-
+const handleConversationStart = (conversationData) => {
+  console.log('Conversation started:', conversationData);
+  alert(`Started ${conversationData.tier_name} for ${conversationData.business_name}`);
+};
   useEffect(() => {
     loadBusinesses()
     loadAudiences()
@@ -1164,7 +1173,7 @@ function Dashboard() {
               disabled={!selectedBusiness}
             >
               <Target className="h-4 w-4 mr-2" />
-              Select Audience
+              AI Conversations
             </Button>
             <Button
               variant={activeTab === 'business-form' ? 'default' : 'ghost'}
@@ -1201,15 +1210,14 @@ function Dashboard() {
               onCreateBusiness={handleCreateBusiness}
               currentUser={user}
             />
-          )}
+                  )}
           {activeTab === 'chat-setup' && selectedBusiness && (
-            <AudienceSelector 
-              business={selectedBusiness}
-              audiences={audiences}
-              onAudienceSelect={handleStartChat}
-              onBack={handleBackToBusinesses}
+            <RefinedTierSelector 
+              businessId={selectedBusiness.business_type_id}
+              onConversationStart={handleConversationStart}
             />
           )}
+          
           {activeTab === 'business-form' && <BusinessManagement onComplete={loadBusinesses} />}
           {activeTab === 'audience-form' && <AudienceManagement onComplete={loadAudiences} />}
           {activeTab === 'credits' && <CreditManagement />}
