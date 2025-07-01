@@ -1,107 +1,38 @@
 import React, { useState, useEffect } from 'react'
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
-import { Brain, Zap, Target, CreditCard, Settings, Phone, FileText, Menu, X, ExternalLink } from 'lucide-react'
-import { Button } from '@/components/ui/button.jsx'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.jsx'
-import { Input } from '@/components/ui/input.jsx'
-import { Label } from '@/components/ui/label.jsx'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.jsx'
-import { Badge } from '@/components/ui/badge.jsx'
-import { Alert, AlertDescription } from '@/components/ui/alert.jsx'
-import BusinessList from './components/BusinessList.jsx'
-import LiveChat from './components/LiveChat.jsx'
-import AudienceSelector from './components/AudienceSelector.jsx'
-import CreditPricing from './components/CreditPricing.jsx'
-import AIConversationDashboard from './components/AIConversationDashboard.jsx'
-import { config as API_CONFIG } from './config.js'
-import './App.css'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './components/ui/card'
+import { Button } from './components/ui/button'
+import { Input } from './components/ui/input'
+import { Label } from './components/ui/label'
+import { Badge } from './components/ui/badge'
+import { X, Users, Building, MessageSquare, CreditCard, Phone, FileText, Zap, TrendingUp, Target, Plus } from 'lucide-react'
+import AIConversationDashboard from './components/AIConversationDashboard'
 
-// Browser Fingerprinting
-class BrowserFingerprint {
-  static generate() {
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    ctx.textBaseline = 'top';
-    ctx.font = '14px Arial';
-    ctx.fillText('Browser fingerprint', 2, 2);
-    
-    const fingerprint = {
-      userAgent: navigator.userAgent,
-      language: navigator.language,
-      platform: navigator.platform,
-      cookieEnabled: navigator.cookieEnabled,
-      doNotTrack: navigator.doNotTrack,
-      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-      screen: `${screen.width}x${screen.height}x${screen.colorDepth}`,
-      canvas: canvas.toDataURL(),
-      webgl: this.getWebGLFingerprint(),
-      plugins: Array.from(navigator.plugins).map(p => p.name).join(','),
-      localStorage: !!window.localStorage,
-      sessionStorage: !!window.sessionStorage,
-      indexedDB: !!window.indexedDB,
-      cpuClass: navigator.cpuClass || 'unknown',
-      hardwareConcurrency: navigator.hardwareConcurrency || 'unknown'
-    };
-    
-    const fingerprintString = JSON.stringify(fingerprint);
-    return this.hashCode(fingerprintString);
-  }
-  
-  static getWebGLFingerprint() {
-    try {
-      const canvas = document.createElement('canvas');
-      const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
-      if (!gl) return 'no-webgl';
-      
-      const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
-      return debugInfo ? 
-        gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) : 
-        'webgl-available';
-    } catch (e) {
-      return 'webgl-error';
-    }
-  }
-  
-  static hashCode(str) {
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-      const char = str.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
-      hash = hash & hash; // Convert to 32bit integer
-    }
-    return Math.abs(hash).toString(16);
-  }
-}
-
-// API Service without authentication
+// API Service with better error handling
 class APIService {
   constructor() {
-    this.baseURL = API_CONFIG.API_BASE_URL
-    this.fingerprint = BrowserFingerprint.generate()
-    this.sessionId = `${this.fingerprint}_${Date.now()}`
+    this.baseURL = 'https://cognitive-persuasion-backend.onrender.com'
   }
 
   async request(endpoint, options = {}) {
-    const url = `${this.baseURL}${endpoint}`
-    const config = {
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Session-ID': this.sessionId,
-        'X-Fingerprint': this.fingerprint
-      },
-      ...options
-    }
-
-    if (config.body && typeof config.body === 'object') {
-      config.body = JSON.stringify(config.body)
-    }
-
     try {
-      const response = await fetch(url, config)
+      console.log(`API Request: ${this.baseURL}${endpoint}`, options)
+      
+      const response = await fetch(`${this.baseURL}${endpoint}`, {
+        headers: {
+          'Content-Type': 'application/json',
+          ...options.headers,
+        },
+        ...options,
+        body: options.body ? JSON.stringify(options.body) : undefined,
+      })
+
+      console.log(`API Response Status: ${response.status}`)
+      
       const data = await response.json()
+      console.log('API Response Data:', data)
 
       if (!response.ok) {
-        throw new Error(data.message || 'API request failed')
+        throw new Error(data.message || `HTTP ${response.status}: ${response.statusText}`)
       }
 
       return data
@@ -122,6 +53,7 @@ class APIService {
   }
 
   async createBusiness(businessData) {
+    console.log('Creating business with data:', businessData)
     return this.request('/api/businesses', {
       method: 'POST',
       body: businessData,
@@ -186,7 +118,7 @@ function DashboardHeader({ onContactClick, onLegalClick }) {
   useEffect(() => {
     // Load credit balance
     api.getCreditBalance()
-      .then(data => setCreditBalance(data.credit_balance))
+      .then(data => setCreditBalance(data.balance || data.credit_balance || 0))
       .catch(console.error)
     
     // Load session info
@@ -199,48 +131,141 @@ function DashboardHeader({ onContactClick, onLegalClick }) {
     <header className="bg-white border-b border-gray-200 px-6 py-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-3">
-          <Brain className="h-8 w-8 text-indigo-600" />
+          <div className="w-8 h-8 bg-purple-600 rounded-lg flex items-center justify-center">
+            <Zap className="h-5 w-5 text-white" />
+          </div>
           <h1 className="text-xl font-semibold text-gray-900">Cognitive Persuasion Engine</h1>
         </div>
+        
         <div className="flex items-center space-x-4">
-          <Badge variant="secondary" className="text-sm">
-            <CreditCard className="h-4 w-4 mr-1" />
-            {creditBalance} Credits
-          </Badge>
+          <div className="flex items-center space-x-2 text-sm text-gray-600">
+            <CreditCard className="h-4 w-4" />
+            <span>{creditBalance} Credits</span>
+          </div>
+          
+          {sessionInfo && (
+            <div className="text-sm text-gray-500">
+              Session: {sessionInfo.session_id?.substring(0, 8) || 'browser-session'}
+            </div>
+          )}
+          
           <Button variant="outline" size="sm" onClick={onContactClick}>
             <Phone className="h-4 w-4 mr-1" />
             Contact
           </Button>
+          
           <Button variant="outline" size="sm" onClick={onLegalClick}>
             <FileText className="h-4 w-4 mr-1" />
             Legal
           </Button>
-          {sessionInfo && (
-            <Badge variant="outline" className="text-xs">
-              Session: {sessionInfo.fingerprint.substring(0, 8)}
-            </Badge>
-          )}
         </div>
       </div>
     </header>
   )
 }
 
+// Business List Component
+function BusinessList({ businesses, onUpdate }) {
+  const [searchTerm, setSearchTerm] = useState('')
+  const [selectedCategory, setSelectedCategory] = useState('All Categories')
+
+  const categories = ['All Categories', ...new Set(businesses.map(b => b.industry_category).filter(Boolean))]
+  
+  const filteredBusinesses = businesses.filter(business => {
+    const matchesSearch = business.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         business.description.toLowerCase().includes(searchTerm.toLowerCase())
+    const matchesCategory = selectedCategory === 'All Categories' || business.industry_category === selectedCategory
+    return matchesSearch && matchesCategory
+  })
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex justify-between items-center">
+          <div>
+            <CardTitle>Your Businesses</CardTitle>
+            <CardDescription>Manage and interact with your business types</CardDescription>
+          </div>
+          <Button onClick={() => window.location.reload()}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Business
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="flex space-x-4 mb-6">
+          <div className="flex-1">
+            <Input
+              placeholder="Search businesses..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          <select 
+            className="px-3 py-2 border border-gray-300 rounded-md"
+            value={selectedCategory}
+            onChange={(e) => setSelectedCategory(e.target.value)}
+          >
+            {categories.map(category => (
+              <option key={category} value={category}>{category}</option>
+            ))}
+          </select>
+          <Button variant="outline">Most Recent</Button>
+        </div>
+
+        <div className="space-y-4">
+          <h3 className="font-medium text-gray-900">Businesses ({filteredBusinesses.length})</h3>
+          
+          {filteredBusinesses.length === 0 ? (
+            <div className="text-center py-12">
+              <Building className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No businesses found</h3>
+              <p className="text-gray-500 mb-4">Get started by adding your first business type</p>
+              <Button onClick={() => window.location.reload()}>
+                <Plus className="h-4 w-4 mr-2" />
+                Add Your First Business
+              </Button>
+            </div>
+          ) : (
+            <div className="grid gap-4">
+              {filteredBusinesses.map((business) => (
+                <Card key={business.business_type_id} className="hover:shadow-md transition-shadow">
+                  <CardContent className="p-4">
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <h4 className="font-medium text-gray-900 mb-1">{business.name}</h4>
+                        <p className="text-sm text-gray-600 mb-2">{business.description}</p>
+                        <Badge variant="secondary">{business.industry_category}</Badge>
+                      </div>
+                      <div className="flex space-x-2">
+                        <Button variant="outline" size="sm">Edit</Button>
+                        <Button variant="outline" size="sm">Delete</Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
 // Contact Modal Component
-function ContactModal({ onClose }) {
+function ContactModal({ isOpen, onClose }) {
   const [contactInfo, setContactInfo] = useState(null)
 
   useEffect(() => {
-    api.getContactInfo()
-      .then(data => setContactInfo(data))
-      .catch(console.error)
-  }, [])
-
-  const handleWhatsAppClick = () => {
-    if (contactInfo?.whatsapp_url) {
-      window.open(contactInfo.whatsapp_url, '_blank')
+    if (isOpen) {
+      api.getContactInfo()
+        .then(data => setContactInfo(data))
+        .catch(console.error)
     }
-  }
+  }, [isOpen])
+
+  if (!isOpen) return null
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -255,27 +280,25 @@ function ContactModal({ onClose }) {
         {contactInfo ? (
           <div className="space-y-4">
             <div>
-              <Label className="text-sm font-medium">Name</Label>
-              <p className="text-gray-700">{contactInfo.name}</p>
+              <h3 className="font-medium text-gray-900">Contact Person</h3>
+              <p className="text-gray-600">{contactInfo.name}</p>
             </div>
+            
             <div>
-              <Label className="text-sm font-medium">Company</Label>
-              <p className="text-gray-700">{contactInfo.company}</p>
+              <h3 className="font-medium text-gray-900">Company</h3>
+              <p className="text-gray-600">{contactInfo.company}</p>
             </div>
+            
             <div>
-              <Label className="text-sm font-medium">WhatsApp</Label>
-              <div className="flex items-center space-x-2">
-                <p className="text-gray-700">{contactInfo.whatsapp}</p>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={handleWhatsAppClick}
-                  className="text-green-600 border-green-600 hover:bg-green-50"
-                >
-                  <ExternalLink className="h-4 w-4 mr-1" />
-                  Chat
-                </Button>
-              </div>
+              <h3 className="font-medium text-gray-900">WhatsApp</h3>
+              <a 
+                href={`https://wa.me/${contactInfo.whatsapp?.replace(/[^0-9]/g, '')}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-green-600 hover:text-green-700"
+              >
+                {contactInfo.whatsapp}
+              </a>
             </div>
           </div>
         ) : (
@@ -287,16 +310,20 @@ function ContactModal({ onClose }) {
 }
 
 // Legal Modal Component
-function LegalModal({ onClose }) {
+function LegalModal({ isOpen, onClose }) {
   const [legalPages, setLegalPages] = useState([])
   const [selectedPage, setSelectedPage] = useState(null)
   const [pageContent, setPageContent] = useState(null)
 
   useEffect(() => {
-    api.getLegalPages()
-      .then(data => setLegalPages(data.legal_pages))
-      .catch(console.error)
-  }, [])
+    if (isOpen && !selectedPage) {
+      api.getLegalPages()
+        .then(data => setLegalPages(data.pages || []))
+        .catch(console.error)
+    }
+  }, [isOpen, selectedPage])
+
+  if (!isOpen) return null
 
   const handlePageSelect = async (slug) => {
     try {
@@ -366,7 +393,7 @@ function LegalModal({ onClose }) {
   )
 }
 
-// Business Management Component
+// Business Management Component with better error handling
 function BusinessManagement({ onComplete }) {
   const [businesses, setBusinesses] = useState([])
   const [newBusiness, setNewBusiness] = useState({
@@ -375,6 +402,8 @@ function BusinessManagement({ onComplete }) {
     industry_category: ''
   })
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
+  const [success, setSuccess] = useState(false)
 
   useEffect(() => {
     loadBusinesses()
@@ -382,23 +411,38 @@ function BusinessManagement({ onComplete }) {
 
   const loadBusinesses = async () => {
     try {
+      console.log('Loading businesses...')
       const data = await api.getBusinesses()
+      console.log('Businesses loaded:', data)
       setBusinesses(data.business_types || [])
     } catch (error) {
       console.error('Failed to load businesses:', error)
+      setError('Failed to load businesses: ' + error.message)
     }
   }
 
   const handleCreateBusiness = async (e) => {
     e.preventDefault()
     setLoading(true)
+    setError(null)
+    setSuccess(false)
+    
     try {
-      await api.createBusiness(newBusiness)
+      console.log('Creating business:', newBusiness)
+      const result = await api.createBusiness(newBusiness)
+      console.log('Business created:', result)
+      
       setNewBusiness({ name: '', description: '', industry_category: '' })
+      setSuccess(true)
       await loadBusinesses()
+      
       if (onComplete) onComplete()
+      
+      // Clear success message after 3 seconds
+      setTimeout(() => setSuccess(false), 3000)
     } catch (error) {
       console.error('Failed to create business:', error)
+      setError('Failed to create business: ' + error.message)
     } finally {
       setLoading(false)
     }
@@ -410,6 +454,18 @@ function BusinessManagement({ onComplete }) {
         <h2 className="text-2xl font-bold text-gray-900 mb-2">Business Types</h2>
         <p className="text-gray-600">Manage your business types for targeted AI responses</p>
       </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-md p-4">
+          <div className="text-red-800">{error}</div>
+        </div>
+      )}
+
+      {success && (
+        <div className="bg-green-50 border border-green-200 rounded-md p-4">
+          <div className="text-green-800">Business created successfully!</div>
+        </div>
+      )}
 
       <Card>
         <CardHeader>
@@ -461,94 +517,46 @@ function BusinessManagement({ onComplete }) {
   )
 }
 
-// Audience Management Component
-function AudienceManagement({ onComplete }) {
-  const [audiences, setAudiences] = useState([])
-  const [newAudience, setNewAudience] = useState({
-    name: '',
-    description: ''
-  })
-  const [loading, setLoading] = useState(false)
-
-  useEffect(() => {
-    loadAudiences()
-  }, [])
-
-  const loadAudiences = async () => {
-    try {
-      const data = await api.getAudiences()
-      setAudiences(data.target_audiences || [])
-    } catch (error) {
-      console.error('Failed to load audiences:', error)
-    }
-  }
-
-  const handleCreateAudience = async (e) => {
-    e.preventDefault()
-    setLoading(true)
-    try {
-      await api.createManualAudience(newAudience.description, newAudience.name)
-      setNewAudience({ name: '', description: '' })
-      await loadAudiences()
-      if (onComplete) onComplete()
-    } catch (error) {
-      console.error('Failed to create audience:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">Target Audiences</h2>
-        <p className="text-gray-600">Define your target audiences for personalized messaging</p>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Create Audience (Manual Description)</CardTitle>
-          <CardDescription>Describe your target audience in natural language</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleCreateAudience} className="space-y-4">
-            <div>
-              <Label htmlFor="audience-name">Audience Name (Optional)</Label>
-              <Input
-                id="audience-name"
-                value={newAudience.name}
-                onChange={(e) => setNewAudience({ ...newAudience, name: e.target.value })}
-                placeholder="e.g., Tech-Savvy Homeowners"
-              />
-            </div>
-            <div>
-              <Label htmlFor="audience-description">Audience Description</Label>
-              <textarea
-                id="audience-description"
-                className="w-full min-h-[100px] p-3 border border-gray-300 rounded-md"
-                value={newAudience.description}
-                onChange={(e) => setNewAudience({ ...newAudience, description: e.target.value })}
-                placeholder="Describe your target audience: demographics, interests, pain points, decision factors, etc."
-                required
-              />
-            </div>
-            <Button type="submit" disabled={loading}>
-              {loading ? 'Creating...' : 'Create Audience'}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
-
-      <AudienceSelector audiences={audiences} onUpdate={loadAudiences} />
-    </div>
-  )
-}
-
 // Main App Component
-function App() {
+export default function App() {
   const [activeTab, setActiveTab] = useState('businesses')
   const [showContactModal, setShowContactModal] = useState(false)
   const [showLegalModal, setShowLegalModal] = useState(false)
+
+  const tabs = [
+    { id: 'businesses', label: 'My Businesses', icon: Building, color: 'orange' },
+    { id: 'select-audience', label: 'Select Audience', icon: Target, color: 'purple' },
+    { id: 'add-business', label: 'Add Business', icon: Plus, color: 'teal' },
+    { id: 'add-audience', label: 'Add Audience', icon: Users, color: 'pink' },
+    { id: 'ai-conversations', label: 'AI Conversations', icon: MessageSquare, color: 'purple' },
+    { id: 'credits', label: 'Credits', icon: CreditCard, color: 'orange' }
+  ]
+
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case 'businesses':
+      case 'add-business':
+        return <BusinessManagement />
+      case 'ai-conversations':
+        return <AIConversationDashboard />
+      case 'credits':
+        return (
+          <div className="text-center py-12">
+            <CreditCard className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">Credits Management</h3>
+            <p className="text-gray-500">Credit system coming soon</p>
+          </div>
+        )
+      default:
+        return (
+          <div className="text-center py-12">
+            <div className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">Feature Coming Soon</h3>
+            <p className="text-gray-500">This feature is under development</p>
+          </div>
+        )
+    }
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -560,81 +568,35 @@ function App() {
       <div className="flex">
         {/* Sidebar */}
         <div className="w-64 bg-white border-r border-gray-200 min-h-screen">
-          <nav className="p-4">
-            <div className="space-y-2">
-              <Button
-                variant={activeTab === 'businesses' ? 'default' : 'ghost'}
-                className="w-full justify-start"
-                onClick={() => setActiveTab('businesses')}
-              >
-                <Target className="h-4 w-4 mr-2" />
-                My Businesses
-              </Button>
-              <Button
-                variant={activeTab === 'audiences' ? 'default' : 'ghost'}
-                className="w-full justify-start"
-                onClick={() => setActiveTab('audiences')}
-              >
-                <Zap className="h-4 w-4 mr-2" />
-                Select Audience
-              </Button>
-              <Button
-                variant={activeTab === 'add-business' ? 'default' : 'ghost'}
-                className="w-full justify-start"
-                onClick={() => setActiveTab('add-business')}
-              >
-                <Target className="h-4 w-4 mr-2" />
-                Add Business
-              </Button>
-              <Button
-                variant={activeTab === 'add-audience' ? 'default' : 'ghost'}
-                className="w-full justify-start"
-                onClick={() => setActiveTab('add-audience')}
-              >
-                <Zap className="h-4 w-4 mr-2" />
-                Add Audience
-              </Button>
-              <Button
-                variant={activeTab === 'ai-conversations' ? 'default' : 'ghost'}
-                className="w-full justify-start"
-                onClick={() => setActiveTab('ai-conversations')}
-              >
-                <Brain className="h-4 w-4 mr-2" />
-                AI Conversations
-              </Button>
-              <Button
-                variant={activeTab === 'credits' ? 'default' : 'ghost'}
-                className="w-full justify-start"
-                onClick={() => setActiveTab('credits')}
-              >
-                <CreditCard className="h-4 w-4 mr-2" />
-                Credits
-              </Button>
-            </div>
+          <nav className="p-4 space-y-2">
+            {tabs.map((tab) => {
+              const Icon = tab.icon
+              const isActive = activeTab === tab.id
+              return (
+                <Button
+                  key={tab.id}
+                  variant={isActive ? "default" : "ghost"}
+                  className={`w-full justify-start ${isActive ? `bg-${tab.color}-600 hover:bg-${tab.color}-700` : ''}`}
+                  onClick={() => setActiveTab(tab.id)}
+                >
+                  <Icon className="h-4 w-4 mr-3" />
+                  {tab.label}
+                </Button>
+              )
+            })}
           </nav>
         </div>
 
         {/* Main Content */}
         <div className="flex-1 p-6">
-          {activeTab === 'businesses' && <BusinessManagement />}
-          {activeTab === 'audiences' && <AudienceManagement />}
-          {activeTab === 'add-business' && <BusinessManagement />}
-          {activeTab === 'add-audience' && <AudienceManagement />}
-          {activeTab === 'ai-conversations' && <AIConversationDashboard />}
-          {activeTab === 'credits' && <CreditPricing />}
+          {renderTabContent()}
         </div>
       </div>
 
       {/* Modals */}
-      {showContactModal && (
-        <ContactModal onClose={() => setShowContactModal(false)} />
-      )}
-      {showLegalModal && (
-        <LegalModal onClose={() => setShowLegalModal(false)} />
-      )}
+      <ContactModal isOpen={showContactModal} onClose={() => setShowContactModal(false)} />
+      <LegalModal isOpen={showLegalModal} onClose={() => setShowLegalModal(false)} />
     </div>
   )
 }
-
-export default App
 
