@@ -185,7 +185,7 @@ function DashboardHeader({ onContactClick, onLegalClick }) {
   useEffect(() => {
     // Load credit balance
     api.getCreditBalance()
-      .then(data => setCreditBalance(data.credit_balance))
+      .then(data => setCreditBalance(data.balance || 0))
       .catch(console.error)
     
     // Load session info
@@ -216,7 +216,7 @@ function DashboardHeader({ onContactClick, onLegalClick }) {
           </Button>
           {sessionInfo && (
             <Badge variant="outline" className="text-xs">
-              Session: {sessionInfo.fingerprint.substring(0, 8)}
+              Session: {sessionInfo.fingerprint ? sessionInfo.fingerprint.substring(0, 8) : 'browser'}
             </Badge>
           )}
         </div>
@@ -236,8 +236,9 @@ function ContactModal({ onClose }) {
   }, [])
 
   const handleWhatsAppClick = () => {
-    if (contactInfo?.whatsapp_url) {
-      window.open(contactInfo.whatsapp_url, '_blank')
+    if (contactInfo?.whatsapp) {
+      const whatsappUrl = `https://wa.me/${contactInfo.whatsapp.replace(/[^0-9]/g, '')}`
+      window.open(whatsappUrl, '_blank')
     }
   }
 
@@ -287,15 +288,15 @@ function ContactModal({ onClose }) {
 
 // Legal Modal Component
 function LegalModal({ onClose }) {
-  const [legalPages, setLegalPages] = useState([])
   const [selectedPage, setSelectedPage] = useState(null)
   const [pageContent, setPageContent] = useState(null)
 
-  useEffect(() => {
-    api.getLegalPages()
-      .then(data => setLegalPages(data.legal_pages))
-      .catch(console.error)
-  }, [])
+  const legalPages = [
+    { slug: 'terms', title: 'Terms of Service', description: 'Terms and conditions for using our service' },
+    { slug: 'privacy', title: 'Privacy Policy', description: 'How we collect and use your information' },
+    { slug: 'gdpr', title: 'GDPR Compliance', description: 'Our commitment to data protection' },
+    { slug: 'cookies', title: 'Cookie Policy', description: 'How we use cookies and tracking' }
+  ]
 
   const handlePageSelect = async (slug) => {
     try {
@@ -304,6 +305,12 @@ function LegalModal({ onClose }) {
       setSelectedPage(slug)
     } catch (error) {
       console.error('Failed to load legal page:', error)
+      // Fallback content
+      setPageContent({
+        title: legalPages.find(p => p.slug === slug)?.title || 'Legal Page',
+        content: 'Legal content for VisitorIntel Cognitive Persuasion Engine.'
+      })
+      setSelectedPage(slug)
     }
   }
 
@@ -351,7 +358,7 @@ function LegalModal({ onClose }) {
                     {pageContent.content}
                   </div>
                   <div className="mt-4 pt-4 border-t text-xs text-gray-500">
-                    Last updated: {pageContent.last_updated}
+                    Last updated: {pageContent.last_updated || new Date().toLocaleDateString()}
                   </div>
                 </div>
               ) : (
@@ -382,7 +389,7 @@ function BusinessManagement({ onComplete }) {
   const loadBusinesses = async () => {
     try {
       const data = await api.getBusinesses()
-      setBusinesses(data.business_types || [])
+      setBusinesses(data || [])
     } catch (error) {
       console.error('Failed to load businesses:', error)
     }
@@ -455,7 +462,46 @@ function BusinessManagement({ onComplete }) {
         </CardContent>
       </Card>
 
-      <BusinessList businesses={businesses} onUpdate={loadBusinesses} />
+      <Card>
+        <CardHeader>
+          <CardTitle>Your Businesses</CardTitle>
+          <CardDescription>Manage and interact with your business types</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="flex items-center space-x-4">
+              <Input placeholder="Search businesses..." className="flex-1" />
+              <Button variant="outline">All Categories</Button>
+              <Button variant="outline">Most Recent</Button>
+            </div>
+            
+            {businesses.length === 0 ? (
+              <div className="text-center py-8">
+                <Target className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No businesses yet</h3>
+                <p className="text-gray-600">Create your first business type to get started</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <h4 className="font-medium">Businesses ({businesses.length})</h4>
+                <div className="grid gap-2">
+                  {businesses.map((business, index) => (
+                    <div key={index} className="p-3 border rounded-lg">
+                      <h5 className="font-medium">{business.name || `Business ${index + 1}`}</h5>
+                      <p className="text-sm text-gray-600">{business.description || 'No description'}</p>
+                      {business.industry_category && (
+                        <Badge variant="secondary" className="mt-1 text-xs">
+                          {business.industry_category}
+                        </Badge>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }
@@ -476,7 +522,7 @@ function AudienceManagement({ onComplete }) {
   const loadAudiences = async () => {
     try {
       const data = await api.getAudiences()
-      setAudiences(data.target_audiences || [])
+      setAudiences(data || [])
     } catch (error) {
       console.error('Failed to load audiences:', error)
     }
@@ -538,7 +584,154 @@ function AudienceManagement({ onComplete }) {
         </CardContent>
       </Card>
 
-      <AudienceSelector audiences={audiences} onUpdate={loadAudiences} />
+      <Card>
+        <CardHeader>
+          <CardTitle>Your Audiences</CardTitle>
+          <CardDescription>Manage your target audiences</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {audiences.length === 0 ? (
+            <div className="text-center py-8">
+              <Zap className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No audiences yet</h3>
+              <p className="text-gray-600">Create your first target audience to get started</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <h4 className="font-medium">Audiences ({audiences.length})</h4>
+              <div className="grid gap-2">
+                {audiences.map((audience, index) => (
+                  <div key={index} className="p-3 border rounded-lg">
+                    <h5 className="font-medium">{audience.name || `Audience ${index + 1}`}</h5>
+                    <p className="text-sm text-gray-600">{audience.description || audience.manual_description || 'No description'}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
+// Audience Selection Page Component
+function AudienceSelectionPage() {
+  const [businesses, setBusinesses] = useState([])
+  const [audiences, setAudiences] = useState([])
+  const [selectedBusiness, setSelectedBusiness] = useState(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    loadData()
+  }, [])
+
+  const loadData = async () => {
+    try {
+      const [businessData, audienceData] = await Promise.all([
+        api.getBusinesses(),
+        api.getAudiences()
+      ])
+      setBusinesses(businessData || [])
+      setAudiences(audienceData || [])
+    } catch (error) {
+      console.error('Failed to load data:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleAudienceSelect = (audience) => {
+    console.log('Selected audience:', audience)
+    // Here you would typically navigate to the chat or next step
+    alert(`Selected audience: ${audience.name || 'Unnamed Audience'} for business: ${selectedBusiness.name || 'Unnamed Business'}`)
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (selectedBusiness) {
+    return (
+      <AudienceSelector
+        business={selectedBusiness}
+        audiences={audiences}
+        onAudienceSelect={handleAudienceSelect}
+        onBack={() => setSelectedBusiness(null)}
+      />
+    )
+  }
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-2xl font-bold text-gray-900 mb-2">Select Business</h2>
+        <p className="text-gray-600">Choose a business to select target audience for</p>
+      </div>
+
+      {businesses.length === 0 ? (
+        <Card>
+          <CardContent className="p-8 text-center">
+            <Target className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No businesses found</h3>
+            <p className="text-gray-600 mb-4">
+              Create your first business to get started with audience selection
+            </p>
+            <Button variant="outline">
+              <Target className="w-4 h-4 mr-2" />
+              Add Business
+            </Button>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {businesses.map((business, index) => (
+            <Card 
+              key={business.business_id || index} 
+              className="cursor-pointer hover:shadow-md transition-shadow border-2 hover:border-blue-200"
+              onClick={() => setSelectedBusiness(business)}
+            >
+              <CardContent className="p-4">
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center">
+                      <Target className="w-4 h-4 text-indigo-600" />
+                    </div>
+                    <h3 className="font-semibold text-gray-900">{business.name || `Business ${index + 1}`}</h3>
+                  </div>
+                </div>
+                
+                <p className="text-sm text-gray-600 mb-3 line-clamp-2">
+                  {business.description || 'No description available'}
+                </p>
+                
+                {business.industry_category && (
+                  <Badge variant="secondary" className="text-xs mb-3">
+                    {business.industry_category}
+                  </Badge>
+                )}
+                
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-gray-500">
+                    {business.created_at ? new Date(business.created_at).toLocaleDateString() : 'Recently added'}
+                  </span>
+                  <Button size="sm" variant="outline">
+                    <Zap className="w-3 h-3 mr-1" />
+                    Select
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -608,7 +801,7 @@ function App() {
         {/* Main Content */}
         <div className="flex-1 p-6">
           {activeTab === 'businesses' && <BusinessManagement />}
-          {activeTab === 'audiences' && <AudienceManagement />}
+          {activeTab === 'audiences' && <AudienceSelectionPage />}
           {activeTab === 'add-business' && <BusinessManagement />}
           {activeTab === 'add-audience' && <AudienceManagement />}
           {activeTab === 'credits' && <CreditPricing />}
