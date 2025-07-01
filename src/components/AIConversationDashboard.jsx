@@ -2,7 +2,9 @@ import React, { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card'
 import { Button } from './ui/button'
 import { Badge } from './ui/badge'
-import { MessageSquare, Play, Pause, Square, RotateCcw, Users, TrendingUp, Clock, Zap } from 'lucide-react'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs'
+import { MessageSquare, Play, Pause, Square, RotateCcw, Users, TrendingUp, Clock, Zap, Globe, Share2 } from 'lucide-react'
+import AISearchImpact from './AISearchImpact'
 
 // API Service for AI Conversations
 class AIConversationAPI {
@@ -140,10 +142,11 @@ function ConversationMessage({ message }) {
   )
 }
 
-// Main AI Conversation Dashboard Component
-export default function AIConversationDashboard() {
+// Main Enhanced AI Conversation Dashboard Component
+export default function AIConversationDashboardEnhanced() {
   const [businesses, setBusinesses] = useState([])
   const [selectedBusiness, setSelectedBusiness] = useState('')
+  const [selectedBusinessData, setSelectedBusinessData] = useState(null)
   const [conversationState, setConversationState] = useState('stopped')
   const [currentConversationId, setCurrentConversationId] = useState(null)
   const [messages, setMessages] = useState([])
@@ -154,6 +157,8 @@ export default function AIConversationDashboard() {
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  const [activeTab, setActiveTab] = useState('conversation')
+  const [publishSuccess, setPublishSuccess] = useState(null)
 
   // AI Agents configuration
   const aiAgents = [
@@ -187,6 +192,16 @@ export default function AIConversationDashboard() {
   useEffect(() => {
     loadBusinesses()
   }, [])
+
+  // Update selected business data when selection changes
+  useEffect(() => {
+    if (selectedBusiness && businesses.length > 0) {
+      const businessData = businesses.find(b => b.business_type_id === selectedBusiness)
+      setSelectedBusinessData(businessData)
+    } else {
+      setSelectedBusinessData(null)
+    }
+  }, [selectedBusiness, businesses])
 
   const loadBusinesses = async () => {
     try {
@@ -290,11 +305,11 @@ export default function AIConversationDashboard() {
     const interval = setInterval(async () => {
       try {
         // For now, simulate messages since the backend might not have real AI responses yet
-        if (messages.length < 10) {
+        if (messages.length < 16) {
           const simulatedMessage = {
             id: `msg_${Date.now()}`,
             agent_name: aiAgents[messages.length % 4].name,
-            content: `This is a simulated AI response about the selected business. Message ${messages.length + 1}.`,
+            content: `This is a simulated AI response about ${getSelectedBusinessName()}. Message ${messages.length + 1} analyzing the business from the perspective of ${aiAgents[messages.length % 4].role.toLowerCase()}.`,
             timestamp: new Date().toISOString(),
             conversation_id: conversationId,
             business_id: selectedBusiness
@@ -307,6 +322,15 @@ export default function AIConversationDashboard() {
             currentRound: Math.floor((prev.totalMessages + 1) / 4) + 1,
             duration: prev.duration + 5
           }))
+
+          // Auto-complete conversation after 16 messages
+          if (messages.length === 15) {
+            setTimeout(() => {
+              setConversationState('completed')
+              stopMessagePolling()
+              setActiveTab('ai-search') // Switch to AI search tab when conversation completes
+            }, 3000)
+          }
         }
       } catch (error) {
         console.error('Error polling messages:', error)
@@ -335,18 +359,35 @@ export default function AIConversationDashboard() {
     return business ? business.name : 'No business selected'
   }
 
+  const handlePublishSuccess = (result) => {
+    setPublishSuccess(result)
+    console.log('AI Search publishing successful:', result)
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div>
         <h2 className="text-2xl font-bold text-gray-900 mb-2">AI Conversation Engine</h2>
-        <p className="text-gray-600">Real-time AI-to-AI business promotion debates</p>
+        <p className="text-gray-600">Real-time AI-to-AI business promotion debates with AI search engine optimization</p>
       </div>
 
       {/* Error Display */}
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-md p-4">
           <div className="text-red-800">{error}</div>
+        </div>
+      )}
+
+      {/* Success Display */}
+      {publishSuccess && (
+        <div className="bg-green-50 border border-green-200 rounded-md p-4">
+          <div className="text-green-800">
+            <strong>Success!</strong> Your business has been published to AI search engines. 
+            <a href={publishSuccess.public_url} target="_blank" rel="noopener noreferrer" className="ml-2 text-blue-600 hover:underline">
+              View public page →
+            </a>
+          </div>
         </div>
       )}
 
@@ -383,7 +424,8 @@ export default function AIConversationDashboard() {
             <div className="flex items-center space-x-2">
               <div className={`w-3 h-3 rounded-full ${
                 conversationState === 'running' ? 'bg-green-500' : 
-                conversationState === 'paused' ? 'bg-yellow-500' : 'bg-gray-400'
+                conversationState === 'paused' ? 'bg-yellow-500' : 
+                conversationState === 'completed' ? 'bg-blue-500' : 'bg-gray-400'
               }`}></div>
               <span className="text-sm font-medium capitalize">{conversationState}</span>
             </div>
@@ -442,87 +484,126 @@ export default function AIConversationDashboard() {
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Live Conversation */}
-        <div className="lg:col-span-2">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <MessageSquare className="h-5 w-5" />
-                <span>Live AI Conversation</span>
-              </CardTitle>
-              <CardDescription>
-                Real-time AI-to-AI debate about {getSelectedBusinessName()}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="h-96 overflow-y-auto border rounded-lg p-4 bg-gray-50">
-                {messages.length === 0 ? (
-                  <div className="flex items-center justify-center h-full text-gray-500">
-                    <div className="text-center">
-                      <MessageSquare className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-                      <p>No active conversation</p>
-                      <p className="text-sm">Select a business and start a debate to see AI conversations</p>
-                    </div>
-                  </div>
-                ) : (
-                  <div>
-                    {messages.map((message) => (
-                      <ConversationMessage key={message.id} message={message} />
-                    ))}
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+      {/* Main Content Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="conversation" className="flex items-center space-x-2">
+            <MessageSquare className="h-4 w-4" />
+            <span>AI Conversation</span>
+          </TabsTrigger>
+          <TabsTrigger value="ai-search" className="flex items-center space-x-2">
+            <Globe className="h-4 w-4" />
+            <span>AI Search Impact</span>
+            {conversationState === 'completed' && (
+              <Badge variant="secondary" className="ml-2">Ready</Badge>
+            )}
+          </TabsTrigger>
+        </TabsList>
 
-        {/* Sidebar */}
-        <div className="space-y-6">
-          {/* Conversation Stats */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <TrendingUp className="h-5 w-5" />
-                <span>Conversation Stats</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex justify-between">
-                <span className="text-sm text-gray-600">Messages</span>
-                <span className="font-medium">{stats.totalMessages}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-gray-600">Current Round</span>
-                <span className="font-medium">{stats.currentRound}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-gray-600">Duration</span>
-                <span className="font-medium">{Math.floor(stats.duration / 60)}:{(stats.duration % 60).toString().padStart(2, '0')}</span>
-              </div>
-            </CardContent>
-          </Card>
+        <TabsContent value="conversation" className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Live Conversation */}
+            <div className="lg:col-span-2">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <MessageSquare className="h-5 w-5" />
+                    <span>Live AI Conversation</span>
+                  </CardTitle>
+                  <CardDescription>
+                    Real-time AI-to-AI debate about {getSelectedBusinessName()}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-96 overflow-y-auto border rounded-lg p-4 bg-gray-50">
+                    {messages.length === 0 ? (
+                      <div className="flex items-center justify-center h-full text-gray-500">
+                        <div className="text-center">
+                          <MessageSquare className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+                          <p>No active conversation</p>
+                          <p className="text-sm">Select a business and start a debate to see AI conversations</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div>
+                        {messages.map((message) => (
+                          <ConversationMessage key={message.id} message={message} />
+                        ))}
+                        {conversationState === 'completed' && (
+                          <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                            <div className="flex items-center space-x-2 text-blue-600 mb-2">
+                              <Globe className="h-4 w-4" />
+                              <span className="font-medium">Conversation Complete!</span>
+                            </div>
+                            <p className="text-sm text-blue-700">
+                              Your AI conversation is ready to be published to AI search engines. 
+                              Switch to the "AI Search Impact" tab to push your business into AI search results.
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
 
-          {/* AI Agents Status */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Users className="h-5 w-5" />
-                <span>AI Agents</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {aiAgents.map((agent) => (
-                <AIAgentStatus 
-                  key={agent.name} 
-                  agent={agent} 
-                  isActive={conversationState === 'running'}
-                />
-              ))}
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+            {/* Sidebar */}
+            <div className="space-y-6">
+              {/* Conversation Stats */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <TrendingUp className="h-5 w-5" />
+                    <span>Conversation Stats</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex justify-between">
+                    <span className="text-sm text-gray-600">Messages</span>
+                    <span className="font-medium">{stats.totalMessages}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-gray-600">Current Round</span>
+                    <span className="font-medium">{stats.currentRound}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-gray-600">Duration</span>
+                    <span className="font-medium">{Math.floor(stats.duration / 60)}:{(stats.duration % 60).toString().padStart(2, '0')}</span>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* AI Agents Status */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <Users className="h-5 w-5" />
+                    <span>AI Agents</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {aiAgents.map((agent) => (
+                    <AIAgentStatus 
+                      key={agent.name} 
+                      agent={agent} 
+                      isActive={conversationState === 'running'}
+                    />
+                  ))}
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="ai-search" className="space-y-6">
+          <AISearchImpact 
+            conversationId={currentConversationId}
+            businessData={selectedBusinessData}
+            onPublishSuccess={handlePublishSuccess}
+          />
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }
