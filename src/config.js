@@ -1,5 +1,5 @@
 // API Configuration
-const API_BASE_URL = '';
+const API_BASE_URL = "https://cognitive-persuasion-backend.onrender.com";
 
 export const config = {
   API_BASE_URL,
