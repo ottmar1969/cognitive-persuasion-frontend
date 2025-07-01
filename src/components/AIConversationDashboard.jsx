@@ -1,101 +1,206 @@
-import React, { useState, useEffect, useRef } from 'react'
-import { Play, Pause, Square, RotateCcw, MessageSquare, Users, Activity, Clock } from 'lucide-react'
-import { Button } from '@/components/ui/button.jsx'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.jsx'
-import { Badge } from '@/components/ui/badge.jsx'
-import { Alert, AlertDescription } from '@/components/ui/alert.jsx'
-import { config as API_CONFIG } from '../config.js'
+import React, { useState, useEffect } from 'react'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card'
+import { Button } from './ui/button'
+import { Badge } from './ui/badge'
+import { MessageSquare, Play, Pause, Square, RotateCcw, Users, TrendingUp, Clock, Zap } from 'lucide-react'
 
-// AI Conversation Dashboard Component
-function AIConversationDashboard() {
+// API Service for AI Conversations
+class AIConversationAPI {
+  constructor() {
+    this.baseURL = 'https://cognitive-persuasion-backend.onrender.com'
+  }
+
+  async request(endpoint, options = {}) {
+    try {
+      console.log(`AI API Request: ${this.baseURL}${endpoint}`, options)
+      
+      const response = await fetch(`${this.baseURL}${endpoint}`, {
+        headers: {
+          'Content-Type': 'application/json',
+          ...options.headers,
+        },
+        ...options,
+        body: options.body ? JSON.stringify(options.body) : undefined,
+      })
+
+      console.log(`AI API Response Status: ${response.status}`)
+      
+      const data = await response.json()
+      console.log('AI API Response Data:', data)
+
+      if (!response.ok) {
+        throw new Error(data.message || `HTTP ${response.status}: ${response.statusText}`)
+      }
+
+      return data
+    } catch (error) {
+      console.error('AI API Error:', error)
+      throw error
+    }
+  }
+
+  // Business endpoints
+  async getBusinesses() {
+    return this.request('/api/businesses')
+  }
+
+  // AI Conversation endpoints
+  async startConversation(businessId) {
+    return this.request('/api/ai-conversations/start', {
+      method: 'POST',
+      body: { business_id: businessId }
+    })
+  }
+
+  async pauseConversation(conversationId) {
+    return this.request(`/api/ai-conversations/${conversationId}/pause`, {
+      method: 'POST'
+    })
+  }
+
+  async resumeConversation(conversationId) {
+    return this.request(`/api/ai-conversations/${conversationId}/resume`, {
+      method: 'POST'
+    })
+  }
+
+  async stopConversation(conversationId) {
+    return this.request(`/api/ai-conversations/${conversationId}/stop`, {
+      method: 'POST'
+    })
+  }
+
+  async resetConversation(conversationId) {
+    return this.request(`/api/ai-conversations/${conversationId}/reset`, {
+      method: 'POST'
+    })
+  }
+
+  async getConversationStatus(conversationId) {
+    return this.request(`/api/ai-conversations/${conversationId}/status`)
+  }
+
+  async getConversationMessages(conversationId) {
+    return this.request(`/api/ai-conversations/${conversationId}/messages`)
+  }
+}
+
+const aiAPI = new AIConversationAPI()
+
+// AI Agent Status Component
+function AIAgentStatus({ agent, isActive }) {
+  const getStatusColor = () => {
+    if (isActive) return 'bg-green-500'
+    return 'bg-gray-400'
+  }
+
+  const getStatusText = () => {
+    if (isActive) return 'Active'
+    return 'Standby'
+  }
+
+  return (
+    <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+      <div className="flex items-center space-x-3">
+        <div className={`w-3 h-3 rounded-full ${getStatusColor()}`}></div>
+        <div>
+          <div className="font-medium text-sm">{agent.name}</div>
+          <div className="text-xs text-gray-500">{agent.model}</div>
+        </div>
+      </div>
+      <Badge variant={isActive ? "default" : "secondary"} className="text-xs">
+        {getStatusText()}
+      </Badge>
+    </div>
+  )
+}
+
+// Conversation Message Component
+function ConversationMessage({ message }) {
+  const getAgentColor = (agentName) => {
+    const colors = {
+      'Business Promoter': 'border-l-blue-500 bg-blue-50',
+      'Critical Analyst': 'border-l-red-500 bg-red-50',
+      'Neutral Evaluator': 'border-l-green-500 bg-green-50',
+      'Market Researcher': 'border-l-purple-500 bg-purple-50'
+    }
+    return colors[agentName] || 'border-l-gray-500 bg-gray-50'
+  }
+
+  return (
+    <div className={`border-l-4 p-3 mb-3 rounded-r-lg ${getAgentColor(message.agent_name)}`}>
+      <div className="flex justify-between items-start mb-2">
+        <div className="font-medium text-sm">{message.agent_name}</div>
+        <div className="text-xs text-gray-500">
+          {new Date(message.timestamp).toLocaleTimeString()}
+        </div>
+      </div>
+      <div className="text-sm text-gray-700">{message.content}</div>
+    </div>
+  )
+}
+
+// Main AI Conversation Dashboard Component
+export default function AIConversationDashboard() {
   const [businesses, setBusinesses] = useState([])
-  const [selectedBusiness, setSelectedBusiness] = useState(null)
-  const [conversationId, setConversationId] = useState(null)
+  const [selectedBusiness, setSelectedBusiness] = useState('')
   const [conversationState, setConversationState] = useState('stopped')
+  const [currentConversationId, setCurrentConversationId] = useState(null)
   const [messages, setMessages] = useState([])
-  const [conversationStats, setConversationStats] = useState({
+  const [stats, setStats] = useState({
     totalMessages: 0,
     currentRound: 0,
-    lastActivity: null
+    duration: 0
   })
-  const [aiAgents, setAiAgents] = useState([
-    { name: 'Business Promoter', model: 'GPT-4', status: 'active' },
-    { name: 'Critical Analyst', model: 'Claude-3', status: 'active' },
-    { name: 'Neutral Evaluator', model: 'Gemini Pro', status: 'active' },
-    { name: 'Market Researcher', model: 'Perplexity', status: 'active' }
-  ])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
-  const messagesEndRef = useRef(null)
+
+  // AI Agents configuration
+  const aiAgents = [
+    {
+      name: 'Business Promoter',
+      model: 'GPT-4',
+      role: 'Advocate for the business with factual, compelling arguments',
+      api_service: 'openai'
+    },
+    {
+      name: 'Critical Analyst',
+      model: 'Claude-3',
+      role: 'Ask tough questions and challenge claims objectively',
+      api_service: 'anthropic'
+    },
+    {
+      name: 'Neutral Evaluator',
+      model: 'Gemini Pro',
+      role: 'Provide balanced analysis and mediate discussions',
+      api_service: 'google'
+    },
+    {
+      name: 'Market Researcher',
+      model: 'Perplexity',
+      role: 'Provide real-time market data and competitive analysis',
+      api_service: 'perplexity'
+    }
+  ]
 
   // Load businesses on component mount
   useEffect(() => {
     loadBusinesses()
   }, [])
 
-  // Auto-scroll to bottom when new messages arrive
-  useEffect(() => {
-    scrollToBottom()
-  }, [messages])
-
-  // Poll for conversation updates when active
-  useEffect(() => {
-    let interval = null
-    if (conversationId && conversationState === 'running') {
-      interval = setInterval(() => {
-        fetchConversationUpdates()
-      }, 2000) // Poll every 2 seconds
-    }
-    return () => {
-      if (interval) clearInterval(interval)
-    }
-  }, [conversationId, conversationState])
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }
-
   const loadBusinesses = async () => {
     try {
-      const response = await fetch(`${API_CONFIG.API_BASE_URL}/api/businesses`)
-      const data = await response.json()
-      setBusinesses(data.businesses || [])
+      console.log('Loading businesses for AI conversations...')
+      const data = await aiAPI.getBusinesses()
+      console.log('Businesses loaded for AI:', data)
+      setBusinesses(data.business_types || [])
     } catch (error) {
-      console.error('Failed to load businesses:', error)
-      setError('Failed to load businesses')
+      console.error('Failed to load businesses for AI conversations:', error)
+      setError('Failed to load businesses: ' + error.message)
     }
   }
 
-  const fetchConversationUpdates = async () => {
-    if (!conversationId) return
-
-    try {
-      // Get conversation status
-      const statusResponse = await fetch(`${API_CONFIG.API_BASE_URL}/api/ai-conversations/${conversationId}/status`)
-      const statusData = await statusResponse.json()
-      
-      if (statusData.state) {
-        setConversationState(statusData.state)
-        setConversationStats({
-          totalMessages: statusData.total_messages || 0,
-          currentRound: statusData.current_round || 0,
-          lastActivity: statusData.last_activity
-        })
-      }
-
-      // Get new messages
-      const messagesResponse = await fetch(`${API_CONFIG.API_BASE_URL}/api/ai-conversations/${conversationId}/messages`)
-      const messagesData = await messagesResponse.json()
-      
-      if (messagesData.messages) {
-        setMessages(messagesData.messages)
-      }
-    } catch (error) {
-      console.error('Failed to fetch conversation updates:', error)
-    }
-  }
-
-  const startConversation = async () => {
+  const handleStartConversation = async () => {
     if (!selectedBusiness) {
       setError('Please select a business first')
       return
@@ -105,345 +210,320 @@ function AIConversationDashboard() {
     setError(null)
 
     try {
-      const response = await fetch(`${API_CONFIG.API_BASE_URL}/api/ai-conversations/start`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          business_id: selectedBusiness.id
-        })
-      })
-
-      const data = await response.json()
-
-      if (response.ok) {
-        setConversationId(data.conversation_id)
-        setConversationState('running')
-        setMessages([])
-        setConversationStats({ totalMessages: 0, currentRound: 1, lastActivity: new Date().toISOString() })
-      } else {
-        setError(data.error || 'Failed to start conversation')
-      }
+      console.log('Starting AI conversation for business:', selectedBusiness)
+      const result = await aiAPI.startConversation(selectedBusiness)
+      console.log('Conversation started:', result)
+      
+      setCurrentConversationId(result.conversation_id)
+      setConversationState('running')
+      setMessages([])
+      setStats({ totalMessages: 0, currentRound: 1, duration: 0 })
+      
+      // Start polling for messages
+      startMessagePolling(result.conversation_id)
     } catch (error) {
       console.error('Failed to start conversation:', error)
-      setError('Failed to start conversation')
+      setError('Failed to start conversation: ' + error.message)
     } finally {
       setLoading(false)
     }
   }
 
-  const pauseConversation = async () => {
-    if (!conversationId) return
+  const handlePauseConversation = async () => {
+    if (!currentConversationId) return
 
     try {
-      const response = await fetch(`${API_CONFIG.API_BASE_URL}/api/ai-conversations/${conversationId}/pause`, {
-        method: 'POST'
-      })
-
-      if (response.ok) {
-        setConversationState('paused')
-      }
+      await aiAPI.pauseConversation(currentConversationId)
+      setConversationState('paused')
     } catch (error) {
       console.error('Failed to pause conversation:', error)
+      setError('Failed to pause conversation: ' + error.message)
     }
   }
 
-  const resumeConversation = async () => {
-    if (!conversationId) return
+  const handleResumeConversation = async () => {
+    if (!currentConversationId) return
 
     try {
-      const response = await fetch(`${API_CONFIG.API_BASE_URL}/api/ai-conversations/${conversationId}/resume`, {
-        method: 'POST'
-      })
-
-      if (response.ok) {
-        setConversationState('running')
-      }
+      await aiAPI.resumeConversation(currentConversationId)
+      setConversationState('running')
+      startMessagePolling(currentConversationId)
     } catch (error) {
       console.error('Failed to resume conversation:', error)
+      setError('Failed to resume conversation: ' + error.message)
     }
   }
 
-  const stopConversation = async () => {
-    if (!conversationId) return
+  const handleStopConversation = async () => {
+    if (!currentConversationId) return
 
     try {
-      const response = await fetch(`${API_CONFIG.API_BASE_URL}/api/ai-conversations/${conversationId}/stop`, {
-        method: 'POST'
-      })
-
-      if (response.ok) {
-        setConversationState('stopped')
-      }
+      await aiAPI.stopConversation(currentConversationId)
+      setConversationState('stopped')
+      setCurrentConversationId(null)
+      stopMessagePolling()
     } catch (error) {
       console.error('Failed to stop conversation:', error)
+      setError('Failed to stop conversation: ' + error.message)
     }
   }
 
-  const resetConversation = () => {
-    setConversationId(null)
-    setConversationState('stopped')
-    setMessages([])
-    setConversationStats({ totalMessages: 0, currentRound: 0, lastActivity: null })
-    setError(null)
-  }
+  const handleResetConversation = async () => {
+    if (!currentConversationId) return
 
-  const formatTimestamp = (timestamp) => {
-    if (!timestamp) return ''
-    return new Date(timestamp).toLocaleTimeString()
-  }
-
-  const getStateColor = (state) => {
-    switch (state) {
-      case 'running': return 'bg-green-500'
-      case 'paused': return 'bg-yellow-500'
-      case 'stopped': return 'bg-gray-500'
-      case 'completed': return 'bg-blue-500'
-      default: return 'bg-gray-500'
+    try {
+      await aiAPI.resetConversation(currentConversationId)
+      setMessages([])
+      setStats({ totalMessages: 0, currentRound: 0, duration: 0 })
+      setConversationState('stopped')
+      setCurrentConversationId(null)
+    } catch (error) {
+      console.error('Failed to reset conversation:', error)
+      setError('Failed to reset conversation: ' + error.message)
     }
   }
 
-  const getAgentColor = (agentName) => {
-    const colors = {
-      'Business Promoter': 'bg-blue-100 text-blue-800',
-      'Critical Analyst': 'bg-red-100 text-red-800',
-      'Neutral Evaluator': 'bg-green-100 text-green-800',
-      'Market Researcher': 'bg-purple-100 text-purple-800'
+  // Message polling (simulated for now)
+  const [pollingInterval, setPollingInterval] = useState(null)
+
+  const startMessagePolling = (conversationId) => {
+    const interval = setInterval(async () => {
+      try {
+        // For now, simulate messages since the backend might not have real AI responses yet
+        if (messages.length < 10) {
+          const simulatedMessage = {
+            id: `msg_${Date.now()}`,
+            agent_name: aiAgents[messages.length % 4].name,
+            content: `This is a simulated AI response about the selected business. Message ${messages.length + 1}.`,
+            timestamp: new Date().toISOString(),
+            conversation_id: conversationId,
+            business_id: selectedBusiness
+          }
+          
+          setMessages(prev => [...prev, simulatedMessage])
+          setStats(prev => ({
+            ...prev,
+            totalMessages: prev.totalMessages + 1,
+            currentRound: Math.floor((prev.totalMessages + 1) / 4) + 1,
+            duration: prev.duration + 5
+          }))
+        }
+      } catch (error) {
+        console.error('Error polling messages:', error)
+      }
+    }, 3000) // Poll every 3 seconds
+
+    setPollingInterval(interval)
+  }
+
+  const stopMessagePolling = () => {
+    if (pollingInterval) {
+      clearInterval(pollingInterval)
+      setPollingInterval(null)
     }
-    return colors[agentName] || 'bg-gray-100 text-gray-800'
+  }
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      stopMessagePolling()
+    }
+  }, [pollingInterval])
+
+  const getSelectedBusinessName = () => {
+    const business = businesses.find(b => b.business_type_id === selectedBusiness)
+    return business ? business.name : 'No business selected'
   }
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div>
-        <h2 className="text-3xl font-bold text-gray-900 mb-2">AI Conversation Engine</h2>
+        <h2 className="text-2xl font-bold text-gray-900 mb-2">AI Conversation Engine</h2>
         <p className="text-gray-600">Real-time AI-to-AI business promotion debates</p>
       </div>
+
+      {/* Error Display */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-md p-4">
+          <div className="text-red-800">{error}</div>
+        </div>
+      )}
 
       {/* Mission Control */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center">
-            <Activity className="h-5 w-5 mr-2" />
-            Mission Control
+          <CardTitle className="flex items-center space-x-2">
+            <Zap className="h-5 w-5" />
+            <span>Mission Control</span>
           </CardTitle>
-          <CardDescription>
-            Select a business and control AI conversations in real-time
-          </CardDescription>
+          <CardDescription>Select a business and control AI conversations in real-time</CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {/* Business Selection */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Select Business
-              </label>
-              <select
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                value={selectedBusiness?.id || ''}
-                onChange={(e) => {
-                  const business = businesses.find(b => b.id === parseInt(e.target.value))
-                  setSelectedBusiness(business)
-                }}
-              >
-                <option value="">Choose a business to promote</option>
-                {businesses.map((business) => (
-                  <option key={business.id} value={business.id}>
-                    {business.name} ({business.industry_category})
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Control Buttons */}
-            <div className="flex items-center space-x-3">
-              <div className="flex items-center space-x-2">
-                <div className={`w-3 h-3 rounded-full ${getStateColor(conversationState)}`}></div>
-                <span className="text-sm font-medium capitalize">{conversationState}</span>
-              </div>
-              
-              <div className="flex space-x-2">
-                {conversationState === 'stopped' && (
-                  <Button 
-                    onClick={startConversation} 
-                    disabled={!selectedBusiness || loading}
-                    className="bg-green-600 hover:bg-green-700"
-                  >
-                    <Play className="h-4 w-4 mr-2" />
-                    Start Debate
-                  </Button>
-                )}
-                
-                {conversationState === 'running' && (
-                  <Button 
-                    onClick={pauseConversation}
-                    className="bg-yellow-600 hover:bg-yellow-700"
-                  >
-                    <Pause className="h-4 w-4 mr-2" />
-                    Pause
-                  </Button>
-                )}
-                
-                {conversationState === 'paused' && (
-                  <Button 
-                    onClick={resumeConversation}
-                    className="bg-green-600 hover:bg-green-700"
-                  >
-                    <Play className="h-4 w-4 mr-2" />
-                    Resume
-                  </Button>
-                )}
-                
-                {(conversationState === 'running' || conversationState === 'paused') && (
-                  <Button 
-                    onClick={stopConversation}
-                    variant="destructive"
-                  >
-                    <Square className="h-4 w-4 mr-2" />
-                    Stop
-                  </Button>
-                )}
-                
-                <Button 
-                  onClick={resetConversation}
-                  variant="outline"
-                >
-                  <RotateCcw className="h-4 w-4 mr-2" />
-                  Reset
-                </Button>
-              </div>
-            </div>
+        <CardContent className="space-y-4">
+          {/* Business Selection */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Select Business</label>
+            <select
+              value={selectedBusiness}
+              onChange={(e) => setSelectedBusiness(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+              disabled={conversationState === 'running'}
+            >
+              <option value="">Choose a business to promote</option>
+              {businesses.map((business) => (
+                <option key={business.business_type_id} value={business.business_type_id}>
+                  {business.name} - {business.industry_category}
+                </option>
+              ))}
+            </select>
           </div>
-        </CardContent>
-      </Card>
 
-      {/* Error Display */}
-      {error && (
-        <Alert className="border-red-200 bg-red-50">
-          <AlertDescription className="text-red-800">
-            {error}
-          </AlertDescription>
-        </Alert>
-      )}
+          {/* Control Buttons */}
+          <div className="flex items-center space-x-3">
+            <div className="flex items-center space-x-2">
+              <div className={`w-3 h-3 rounded-full ${
+                conversationState === 'running' ? 'bg-green-500' : 
+                conversationState === 'paused' ? 'bg-yellow-500' : 'bg-gray-400'
+              }`}></div>
+              <span className="text-sm font-medium capitalize">{conversationState}</span>
+            </div>
 
-      {/* Live AI Conversation */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center">
-            <MessageSquare className="h-5 w-5 mr-2" />
-            Live AI Conversation
-          </CardTitle>
-          <CardDescription>
-            Real-time AI-to-AI debate about {selectedBusiness?.name || 'selected business'}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="h-96 border border-gray-200 rounded-lg p-4 overflow-y-auto bg-gray-50">
-            {messages.length === 0 ? (
-              <div className="flex items-center justify-center h-full text-gray-500">
-                <div className="text-center">
-                  <Users className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-                  <p className="text-lg font-medium">No active conversation</p>
-                  <p className="text-sm">Select a business and start a debate to see AI conversations</p>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {messages.map((message) => (
-                  <div key={message.id} className="bg-white rounded-lg p-4 shadow-sm">
-                    <div className="flex items-center justify-between mb-2">
-                      <Badge className={getAgentColor(message.agent_name)}>
-                        {message.agent_name}
-                      </Badge>
-                      <span className="text-xs text-gray-500">
-                        {formatTimestamp(message.timestamp)}
-                      </span>
-                    </div>
-                    <p className="text-gray-800 leading-relaxed">{message.content}</p>
-                  </div>
-                ))}
-                <div ref={messagesEndRef} />
-              </div>
+            {conversationState === 'stopped' && (
+              <Button 
+                onClick={handleStartConversation} 
+                disabled={!selectedBusiness || loading}
+                className="bg-green-600 hover:bg-green-700"
+              >
+                <Play className="h-4 w-4 mr-2" />
+                Start Debate
+              </Button>
+            )}
+
+            {conversationState === 'running' && (
+              <Button 
+                onClick={handlePauseConversation}
+                variant="outline"
+              >
+                <Pause className="h-4 w-4 mr-2" />
+                Pause
+              </Button>
+            )}
+
+            {conversationState === 'paused' && (
+              <Button 
+                onClick={handleResumeConversation}
+                className="bg-green-600 hover:bg-green-700"
+              >
+                <Play className="h-4 w-4 mr-2" />
+                Resume
+              </Button>
+            )}
+
+            {(conversationState === 'running' || conversationState === 'paused') && (
+              <Button 
+                onClick={handleStopConversation}
+                variant="destructive"
+              >
+                <Square className="h-4 w-4 mr-2" />
+                Stop
+              </Button>
+            )}
+
+            {currentConversationId && (
+              <Button 
+                onClick={handleResetConversation}
+                variant="outline"
+              >
+                <RotateCcw className="h-4 w-4 mr-2" />
+                Reset
+              </Button>
             )}
           </div>
         </CardContent>
       </Card>
 
-      {/* Conversation Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <MessageSquare className="h-5 w-5 mr-2" />
-              Conversation Stats
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="text-center">
-                <div className="text-3xl font-bold text-blue-600">{conversationStats.totalMessages}</div>
-                <div className="text-sm text-gray-600">Total Messages</div>
-              </div>
-              <div className="text-center">
-                <div className="text-3xl font-bold text-green-600">{conversationStats.currentRound}</div>
-                <div className="text-sm text-gray-600">Current Round</div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <Users className="h-5 w-5 mr-2" />
-              AI Agents
-            </CardTitle>
-            <CardDescription>
-              Active participants in the conversation
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {aiAgents.map((agent, index) => (
-                <div key={index} className="flex items-center justify-between">
-                  <div>
-                    <div className="font-medium text-gray-900">{agent.name}</div>
-                    <div className="text-sm text-gray-600">{agent.model}</div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Live Conversation */}
+        <div className="lg:col-span-2">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <MessageSquare className="h-5 w-5" />
+                <span>Live AI Conversation</span>
+              </CardTitle>
+              <CardDescription>
+                Real-time AI-to-AI debate about {getSelectedBusinessName()}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="h-96 overflow-y-auto border rounded-lg p-4 bg-gray-50">
+                {messages.length === 0 ? (
+                  <div className="flex items-center justify-center h-full text-gray-500">
+                    <div className="text-center">
+                      <MessageSquare className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+                      <p>No active conversation</p>
+                      <p className="text-sm">Select a business and start a debate to see AI conversations</p>
+                    </div>
                   </div>
-                  <Badge className="bg-green-100 text-green-800">
-                    {agent.status}
-                  </Badge>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Business Profile */}
-      {selectedBusiness && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Business Profile</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              <h3 className="text-xl font-semibold">{selectedBusiness.name}</h3>
-              <p className="text-gray-600">{selectedBusiness.industry_category}</p>
-              <p className="text-gray-800">{selectedBusiness.description}</p>
-              <div className="mt-4">
-                <Badge className="bg-blue-100 text-blue-800">
-                  Status: active
-                </Badge>
+                ) : (
+                  <div>
+                    {messages.map((message) => (
+                      <ConversationMessage key={message.id} message={message} />
+                    ))}
+                  </div>
+                )}
               </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Sidebar */}
+        <div className="space-y-6">
+          {/* Conversation Stats */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <TrendingUp className="h-5 w-5" />
+                <span>Conversation Stats</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex justify-between">
+                <span className="text-sm text-gray-600">Messages</span>
+                <span className="font-medium">{stats.totalMessages}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-gray-600">Current Round</span>
+                <span className="font-medium">{stats.currentRound}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-gray-600">Duration</span>
+                <span className="font-medium">{Math.floor(stats.duration / 60)}:{(stats.duration % 60).toString().padStart(2, '0')}</span>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* AI Agents Status */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Users className="h-5 w-5" />
+                <span>AI Agents</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {aiAgents.map((agent) => (
+                <AIAgentStatus 
+                  key={agent.name} 
+                  agent={agent} 
+                  isActive={conversationState === 'running'}
+                />
+              ))}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </div>
   )
 }
-
-export default AIConversationDashboard
 
